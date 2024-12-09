@@ -35,9 +35,6 @@
   (define moved (move-by-id (list->vector decoded)))
   (for/sum ((file-id moved) (i (vector-length moved)) #:when (integer? file-id)) (* file-id i)))
 
-(define (get-vector-subset vec file-id)
-  (vector-filter (curry equal? file-id) vec))
-
 (define (find-free-subset-with-length vec len)
   (define counting #f)
   (define idx 0)
@@ -65,27 +62,29 @@
               #:when (exit? el i))
     idx))
 
-(define (move-by-file ids vec)
+(define (move-by-file ids hashcount vec)
   (if (empty? ids)
       vec
       (let* ([id (car ids)]
-             [subset (get-vector-subset vec id)]
-             [subset-len (vector-length subset)]
+             [subset-len (hash-ref hashcount id)]
              [starting-subset-idx (vector-member id vec)]
              [starting-free-idx (find-free-subset-with-length vec subset-len)])
         (if (or (false? starting-free-idx) (> starting-free-idx starting-subset-idx))
-            (move-by-file (cdr ids) vec)
+            (move-by-file (cdr ids) hashcount vec)
             (begin
               (for/list ([i subset-len])
                 (vector-set! vec (+ i starting-free-idx) id))
               (for/list ([i subset-len])
                 (vector-set! vec (+ i starting-subset-idx) 'free))
-              (move-by-file (cdr ids) vec))))))
+              (move-by-file (cdr ids) hashcount vec))))))
 
 (define (part2 input)
   (define decoded (decode input))
+  (define hashcount
+    (for/fold ([h (make-immutable-hash)]) ([el decoded])
+      (hash-update h el add1 0)))
   (define ids (reverse (remove-duplicates (filter integer? decoded))))
-  (define moved (move-by-file ids (list->vector decoded)))
+  (define moved (move-by-file ids hashcount (list->vector decoded)))
   (for/sum ((file-id moved) (i (vector-length moved)) #:when (integer? file-id)) (* file-id i)))
 
 (module+ test
@@ -95,7 +94,7 @@
   (check-equal? (part1 example) 1928)
   (check-equal? (part2 example) 2858)
   (check-equal? (part1 input) 6200294120911)
-  (check-equal? (part1 input) 6227018762750))
+  (check-equal? (part2 input) 6227018762750))
 
 (module+ main
   (define input (fmt "static/day09input.txt"))
