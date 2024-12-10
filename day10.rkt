@@ -17,11 +17,11 @@
 (define (ends ht key find done)
   (append* (for/list ([t transforms])
              (define k (list ((first t) (first key)) ((second t) (second key))))
-             (define v (hash-ref ht k -1))
+             (define v (hash-ref ht k empty))
              (cond
                [(and (equal? v find) (equal? find done)) (list k)]
                [(equal? v find) (ends ht k (add1 find) done)]
-               [else '()]))))
+               [else empty]))))
 
 (define (part1 ht)
   (for/sum ((key (hash-keys ht)) #:when (equal? 0 (hash-ref ht key)))
