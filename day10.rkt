@@ -21,15 +21,15 @@
              (cond
                [(and (equal? v find) (equal? find done)) (list k)]
                [(equal? v find) (ends ht k (add1 find) done)]
-               [else '(())]))))
+               [else '()]))))
 
 (define (part1 ht)
   (for/sum ((key (hash-keys ht)) #:when (equal? 0 (hash-ref ht key)))
-    (length (remove-duplicates (filter (compose not empty?) (ends ht key 1 9))))))
+    (length (remove-duplicates (ends ht key 1 9)))))
 
 (define (part2 ht)
   (for/sum ((key (hash-keys ht)) #:when (equal? 0 (hash-ref ht key)))
-    (length (filter (compose not empty?) (ends ht key 1 9)))))
+    (length (ends ht key 1 9))))
 
 (module+ test
   (require rackunit)
