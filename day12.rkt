@@ -26,7 +26,7 @@
              #:when (hash-has-key? input next-key))
     (define next-value (hash-ref input next-key))
     (cond
-      [(hash-has-key? r next-key) empty]
+      [(hash-has-key? r next-key) null]
       [(equal? value next-value) (region input r next-key next-value)]))
   r)
 
@@ -39,7 +39,7 @@
 (define (hash-ref-safe ht key)
   (if (hash-has-key? ht key)
       (hash-ref ht key)
-      empty))
+      null))
 
 (define (perimeter input r)
   (for*/sum ((key (hash-keys r)) (t (list up right down left)))
