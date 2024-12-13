@@ -1,42 +1,27 @@
 #lang racket
 
-(require math/matrix)
-
-(define (fmt-btn line)
-  (list (string->number (last (regexp-match #rx"X\\+([0-9]+)" line)))
-        (string->number (last (regexp-match #rx"Y\\+([0-9]+)" line)))))
-
-(define (fmt-prize line)
-  (list (string->number (last (regexp-match #rx"X=([0-9]+)" line)))
-        (string->number (last (regexp-match #rx"Y=([0-9]+)" line)))))
-
 (define (fmt fn)
   (for/list ([section (string-split (file->string fn) "\r\n\r\n")])
     (define lines (string-split section "\r\n"))
-    (list (fmt-btn (first lines)) (fmt-btn (second lines)) (fmt-prize (third lines)))))
+    (list (map string->number (cdr (regexp-match #px"X\\+(\\d+), Y\\+(\\d+)" (first lines))))
+          (map string->number (cdr (regexp-match #px"X\\+(\\d+), Y\\+(\\d+)" (second lines))))
+          (map string->number (cdr (regexp-match #px"X=(\\d+), Y=(\\d+)" (third lines)))))))
 
-(define (solve lst)
-  (define A
-    (matrix [[(first (first lst)) (first (second lst))]
-             [(second (first lst)) (second (second lst))]]))
-  (define B (matrix [[(first (third lst))] [(second (third lst))]]))
-  (define result (matrix->list (matrix-solve A B)))
-  (if (andmap integer? result) result null))
+(define (solve a b c)
+  (define y (/ (- (* (second c) (first a)) (* (first c) (second a))) (- (* (first a) (second b)) (* (second a) (first b)))))
+  (define r (list (/ (- (first c) (* (first b) y)) (first a)) y))
+  (apply values (if (andmap integer? r) r (list 0 0))))
 
 (define (part1 input)
-  (for/sum ((region input) #:do ((define result (solve region))) #:when (not (empty? result)))
-           (+ (* (first result) 3) (second result))))
+  (for/sum ((region input))
+    (define-values (a b) (apply solve region))
+    (+ (* a 3) b)))
 
-(define (modify region)
-  (define v 10000000000000)
-  (list (first region)
-        (second region)
-        (list (+ (first (third region)) v) (+ (second (third region)) v))))
+(define (modify a b c)
+  (list a b (map (curry + 10000000000000) c)))
 
 (define (part2 input)
-  (for/sum ((region input) #:do ((define result (solve (modify region))))
-                           #:when (> (length result) 0))
-           (+ (* (first result) 3) (second result))))
+  (part1 (map (curry apply modify) input)))
 
 (module+ test
   (require rackunit)
