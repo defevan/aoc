@@ -48,4 +48,4 @@
 
 (module+ main
   (define input (fmt "static/day14input.txt"))
-  (printf "day13\n\tpart1: ~a\n\tpart2: ~a\n" (part1 input 101 103 100) (part2 input 101 103)))
+  (printf "day14\n\tpart1: ~a\n\tpart2: ~a\n" (part1 input 101 103 100) (part2 input 101 103)))
