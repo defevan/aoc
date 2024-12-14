@@ -10,15 +10,15 @@
   (match-define (list (list px py) (list vx vy)) r)
   (and (>= max-w px min-w) (>= max-h py min-h)))
 
-(define (blink w h r)
-  (match-define (list (list px py) (list vx vy)) r)
-  (list (list (modulo (+ px vx) w) (modulo (+ py vy) h)) (list vx vy)))
+(define (blink w h robots)
+  (for/list ([r robots])
+    (match-define (list (list px py) (list vx vy)) r)
+    (list (list (modulo (+ px vx) w) (modulo (+ py vy) h)) (list vx vy))))
 
 (define (part1 input w h c)
   (define robots
     (for*/fold ([robots input]) ([i c])
-      (for/list ([r robots])
-        (blink w h r))))
+      (blink w h robots)))
   (define quads
     (list (curry in-bounds? 0 (sub1 (floor (/ w 2))) 0 (sub1 (floor (/ h 2))))
           (curry in-bounds? (add1 (floor (/ w 2))) w 0 (sub1 (floor (/ h 2))))
@@ -29,12 +29,12 @@
 (define (overlap? robots)
   (define ht
     (for/fold ([ht (make-immutable-hash)]) ([r robots])
-      (hash-update ht (first r) add1 0)))
+      (hash-update ht (car r) add1 0)))
   (ormap (curryr > 1) (hash-values ht)))
 
 (define (part2 input w h)
   (for/first ([i (in-naturals)]
-              #:do ((set! input (map (curry blink w h) input)))
+              #:do ((set! input (blink w h input)))
               #:when (not (overlap? input)))
     (add1 i)))
 
