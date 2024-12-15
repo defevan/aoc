@@ -1,7 +1,5 @@
 #lang racket
 
-(require threading)
-
 (define up (list sub1 identity))
 (define right (list identity add1))
 (define down (list add1 identity))
@@ -9,10 +7,10 @@
 
 (define (dir c)
   (match c
-    ["^" up]
-    [">" right]
-    ["v" down]
-    ["<" left]))
+    [#\^ up]
+    [#\> right]
+    [#\v down]
+    [#\< left]))
 
 (define (go dir pos)
   (list ((first dir) (first pos)) ((last dir) (last pos))))
@@ -31,7 +29,9 @@
                                      [charn (length chars)])
                             `(,(list linen charn) . ,c))))))
   (define dirs
-    (~> (string-split dirstr "") (filter (curry oneof (list "^" ">" "v" "<")) _) (map dir _)))
+    (for/list ([c (string->list dirstr)]
+               #:when (oneof (list #\^ #\> #\v #\<) c))
+      (dir c)))
   (list ht dirs))
 
 (define (find ht c)
@@ -40,83 +40,67 @@
              #:when (equal? value c))
     k))
 
-(define (can-move? ht pos dir)
+(define (can-step? ht pos dir)
   (define c (hash-ref ht pos))
   (cond
     [(equal? c ".") #t]
     [(equal? c "#") #f]
-    [(equal? c "O") (can-move? ht (go dir pos) dir)]
-    [(equal? c "@") (can-move? ht (go dir pos) dir)]
-    [(and (oneof (list "[" "]") c) (oneof (list right left) dir)) (can-move? ht (go dir pos) dir)]
+    [(oneof (list "O" "@") c) (can-step? ht (go dir pos) dir)]
+    [(and (oneof (list "[" "]") c) (oneof (list right left) dir)) (can-step? ht (go dir pos) dir)]
     [(and (equal? c "[") (oneof (list up down) dir))
-     (and (can-move? ht (go dir pos) dir) (can-move? ht (go dir (go right pos)) dir))]
+     (and (can-step? ht (go dir pos) dir) (can-step? ht (go dir (go right pos)) dir))]
     [(and (equal? c "]") (oneof (list up down) dir))
-     (and (can-move? ht (go dir pos) dir) (can-move? ht (go dir (go left pos)) dir))]))
+     (and (can-step? ht (go dir pos) dir) (can-step? ht (go dir (go left pos)) dir))]))
 
-(define (step ht c1 p1 dir)
-  (define pos2 (go dir p1))
-  (define c2 (hash-ref ht pos2))
-  (define pos3 (go dir pos2))
-  (define c3 (hash-ref ht pos3))
+(define (step ht curr-char curr-pos dir)
+  (define next-pos (go dir curr-pos))
+  (define next-char (hash-ref ht next-pos))
   (cond
-    [(equal? c2 ".")
-     (hash-set! ht pos2 c1)
-     (hash-set! ht p1 c2)]
-    [(equal? c2 "O")
-     (step ht c2 pos2 dir)
-     (hash-set! ht p1 ".")
-     (hash-set! ht pos2 c1)]
-    [(and (oneof (list "[" "]") c2) (oneof (list left right) dir))
-     (step ht c3 pos3 dir)
-     (step ht c2 pos2 dir)
-     (hash-set! ht p1 ".")
-     (hash-set! ht pos2 c1)]
-    [(and (oneof (list "@" "]") c1) (equal? c2 "[") (oneof (list up down) dir))
-     (step ht c2 pos2 dir)
-     (step ht "]" (go right pos2) dir)
-     (hash-set! ht pos2 c1)
-     (hash-set! ht p1 ".")]
-    [(and (oneof (list "@" "[") c1) (equal? c2 "]") (oneof (list up down) dir))
-     (step ht c2 pos2 dir)
-     (step ht "[" (go left pos2) dir)
-     (hash-set! ht pos2 c1)
-     (hash-set! ht p1 ".")]
-    [(and (oneof (list "[" "]") c2) (oneof (list up down) dir))
-     (step ht c2 pos2 dir)
-     (hash-set! ht p1 ".")
-     (hash-set! ht pos2 c1)])
-  ht)
+    [(equal? next-char ".")
+     (hash-set! ht next-pos curr-char)
+     (hash-set! ht curr-pos next-char)]
+    [(and (oneof (list "@" "]") curr-char) (equal? next-char "[") (oneof (list up down) dir))
+     (step ht next-char next-pos dir)
+     (step ht "]" (go right next-pos) dir)
+     (hash-set! ht next-pos curr-char)
+     (hash-set! ht curr-pos ".")]
+    [(and (oneof (list "@" "[") curr-char) (equal? next-char "]") (oneof (list up down) dir))
+     (step ht next-char next-pos dir)
+     (step ht "[" (go left next-pos) dir)
+     (hash-set! ht next-pos curr-char)
+     (hash-set! ht curr-pos ".")]
+    [else
+     (step ht next-char next-pos dir)
+     (hash-set! ht curr-pos ".")
+     (hash-set! ht next-pos curr-char)]))
 
 (define (move ht pos dirs)
   (cond
     [(empty? dirs) ht]
-    [(can-move? ht pos (car dirs)) (move (step ht "@" pos (car dirs)) (car (find ht "@")) (cdr dirs))]
+    [(can-step? ht pos (car dirs))
+     (step ht "@" pos (car dirs))
+     (move ht (car (find ht "@")) (cdr dirs))]
     [else (move ht pos (cdr dirs))]))
 
-(define (calc ht dirs c)
+(define (part1 ht dirs #:c [c "O"])
   (for/sum ((b (find (move ht (car (find ht "@")) dirs) c))) (+ (* (first b) 100) (last b))))
-
-(define (part1 ht dirs)
-  (calc ht dirs "O"))
 
 (define (wide input)
   (define ht (make-hash))
-  (define w (last (argmax last (hash-keys input))))
-  (define h (first (argmax first (hash-keys input))))
-  (for/list ([linen (range (add1 h))])
-    (for/list ([charn (range (add1 w))])
-      (match-define (list left right)
-        (match (hash-ref input (list linen charn))
-          ["#" (list "#" "#")]
-          ["O" (list "[" "]")]
-          ["." (list "." ".")]
-          ["@" (list "@" ".")]))
-      (hash-set! ht (list linen (* charn 2)) left)
-      (hash-set! ht (list linen (add1 (* charn 2))) right)))
+  (for/list ([key (hash-keys input)])
+    (match-define (list linen charn) key)
+    (match-define (list left right)
+      (match (hash-ref input key)
+        ["#" (list "#" "#")]
+        ["O" (list "[" "]")]
+        ["." (list "." ".")]
+        ["@" (list "@" ".")]))
+    (hash-set! ht (list linen (* charn 2)) left)
+    (hash-set! ht (list linen (add1 (* charn 2))) right))
   ht)
 
 (define (part2 ht dirs)
-  (calc (wide ht) dirs "["))
+  (part1 (wide ht) dirs #:c "["))
 
 (module+ test
   (require rackunit)
