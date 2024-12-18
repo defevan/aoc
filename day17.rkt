@@ -11,49 +11,43 @@
         (map string->number (string-split progstr ","))))
 
 (define (eval registers program)
-  (define out (list))
-  (define (try-loop ptr)
-    (if (> (length program) ptr)
-        (loop ptr)
-        (reverse out)))
-  (define (loop ptr)
-    (define lit (list-ref program (add1 ptr)))
-    (define (combo)
-      (match lit
-        [0 0]
-        [1 1]
-        [2 2]
-        [3 3]
-        [4 (hash-ref registers 'a)]
-        [5 (hash-ref registers 'b)]
-        [6 (hash-ref registers 'c)]))
-    (match (list-ref program ptr)
-      [0
-       (hash-set! registers 'a (floor (/ (hash-ref registers 'a) (expt 2 (combo)))))
-       (try-loop (+ ptr 2))]
-      [1
-       (hash-set! registers 'b (bitwise-xor (hash-ref registers 'b) lit))
-       (try-loop (+ ptr 2))]
-      [2
-       (hash-set! registers 'b (modulo (combo) 8))
-       (try-loop (+ ptr 2))]
-      [3
-       (try-loop (if (zero? (hash-ref registers 'a))
-                     (+ ptr 2)
-                     lit))]
-      [4
-       (hash-set! registers 'b (bitwise-xor (hash-ref registers 'b) (hash-ref registers 'c)))
-       (try-loop (+ ptr 2))]
-      [5
-       (set! out (cons (modulo (combo) 8) out))
-       (try-loop (+ ptr 2))]
-      [6
-       (hash-set! registers 'b (floor (/ (hash-ref registers 'a) (expt 2 (combo)))))
-       (try-loop (+ ptr 2))]
-      [7
-       (hash-set! registers 'c (floor (/ (hash-ref registers 'a) (expt 2 (combo)))))
-       (try-loop (+ ptr 2))]))
-  (try-loop 0))
+  (define (loop ptr out proglen)
+    (cond ((> proglen (add1 ptr))
+           (define lit (list-ref program (add1 ptr)))
+           (define (combo)
+             (match lit
+               [(or 0 1 2 3) lit]
+               [4 (hash-ref registers 'a)]
+               [5 (hash-ref registers 'b)]
+               [6 (hash-ref registers 'c)]))
+           (match (list-ref program ptr)
+             [0
+              (hash-set! registers 'a (floor (/ (hash-ref registers 'a) (expt 2 (combo)))))
+              (loop (+ ptr 2) out proglen)]
+             [1
+              (hash-set! registers 'b (bitwise-xor (hash-ref registers 'b) lit))
+              (loop (+ ptr 2) out proglen)]
+             [2
+              (hash-set! registers 'b (modulo (combo) 8))
+              (loop (+ ptr 2) out proglen)]
+             [3
+              (if (zero? (hash-ref registers 'a))
+                  (loop (+ ptr 2) out proglen)
+                  (loop lit out proglen))]
+             [4
+              (hash-set! registers 'b (bitwise-xor (hash-ref registers 'b) (hash-ref registers 'c)))
+              (loop (+ ptr 2) out proglen)]
+             [5
+              (loop (+ ptr 2) (cons (modulo (combo) 8) out) proglen)]
+             [6
+              (hash-set! registers 'b (floor (/ (hash-ref registers 'a) (expt 2 (combo)))))
+              (loop (+ ptr 2) out proglen)]
+             [7
+              (hash-set! registers 'c (floor (/ (hash-ref registers 'a) (expt 2 (combo)))))
+              (loop (+ ptr 2) out proglen)]))
+          (else 
+           (reverse out))))
+  (loop 0 '() (length program)))
 
 (define (part1 registers program)
   (string-join (map number->string (eval (hash-copy registers) program)) ","))

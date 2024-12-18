@@ -1,10 +1,10 @@
 #lang racket
 
 (define (fmt fn)
-  (map string->number (string-split (file->string fn) " ")))
+  (map string->number (regexp-match* #px"\\b\\d+\\b" (file->string fn))))
 
 (define (digits n)
-  (if (= n 0) 0 (add1 (floor (/ (log n) (log 10))))))
+  (if (zero? n) 0 (add1 (floor (/ (log n) (log 10))))))
 
 (define (split n dc)
   (define x (expt 10 (/ dc 2)))
@@ -20,18 +20,17 @@
                      (hash-set! ht (list args ...) ret)
                      ret)))) (make-hash))))
 
-(define/memo (stones n c)
-  (define dc (digits n))
-  (cond ((= c 0) 1)
-        ((= n 0) (stones 1 (sub1 c)))
-        ((even? dc) (for/sum ((v (split n dc))) (stones v (sub1 c))))
-        (else (stones (* n 2024) (sub1 c)))))
+(define/memo (stones n dc c)
+  (cond ((zero? c) 1)
+        ((zero? n) (stones 1 1 (sub1 c)))
+        ((even? dc) (for/sum ((v (split n dc))) (stones v (digits v) (sub1 c))))
+        (else (stones (* n 2024) (digits (* n 2024)) (sub1 c)))))
 
-(define (part1 lst)
-  (for/sum ((n lst)) (stones n 25)))
+(define (part1 lst #:count [count 25])
+  (for/sum ((n lst)) (stones n (digits n) count)))
 
 (define (part2 lst)
-  (for/sum ((n lst)) (stones n 75)))
+  (part1 lst #:count 75))
 
 (module+ test
   (require rackunit)
