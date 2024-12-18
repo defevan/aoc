@@ -37,6 +37,8 @@
          (list lst))
         (else (cons (take lst size) (chunk (drop lst size) size)))))
 
+;; Six minute run time on input. You should reealy make this better.
+;; Optimized dijkstras + Binary search?
 (define (part2 input w h start-steps target)
   (define threads
     (for/list ((c (chunk (range start-steps (sub1 (length input))) 102)))
