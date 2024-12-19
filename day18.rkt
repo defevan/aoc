@@ -1,4 +1,8 @@
-#lang racket
+#lang racket/base
+
+(require racket/file
+         racket/string
+         racket/list)
 
 (define (up x y)
   (list x (sub1 y)))
@@ -49,9 +53,9 @@
       (values key #t)))
   (define edges
     (append* (for/list ([k (hash-keys ht)])
-               (match-define (list x y) k)
                (filter (lambda (lst) (hash-has-key? ht (last lst)))
-                       (map (lambda (dir) (list (list x y) (dir x y))) (list up right down left))))))
+                       (map (lambda (dir) (list k (dir (first k) (last k))))
+                            (list up right down left))))))
   (undirected edges (list 0 0)))
 
 (define (part1 input w h steps target)
@@ -69,7 +73,7 @@
 
 (define (part2 input w h start-steps target)
   (define (proc steps)
-    (not (infinite? (hash-ref (calc input w h steps target) target))))
+    (< (hash-ref (calc input w h steps target) target) +inf.0))
   (define result (bin proc (range start-steps (sub1 (length input)))))
   (string-join (map number->string (list-ref input result)) ","))
 
