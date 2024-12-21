@@ -45,7 +45,7 @@
 (define (undirected edges start)
   (directed (append edges (map (lambda (edge) (list (last edge) (first edge))) edges)) start))
 
-(define (ht-find ht find)
+(define (hash-find ht find)
   (for/first ([key (hash-keys ht)]
               #:do ((define value (hash-ref ht key)))
               #:when (equal? value find))
@@ -61,15 +61,14 @@
 
 (define (calc input diff size)
   (define edges
-    (append* (for/list ([key (hash-keys input)]
-                        #:when (not (equal? #\# (hash-ref input key))))
-               (map (lambda (n) (list key n))
-                    (for/list ([dir (list up right down left)]
-                               #:do ((define neighbor-pos (go dir key)))
-                               #:when (and (hash-has-key? input neighbor-pos)
-                                           (not (equal? #\# (hash-ref input neighbor-pos)))))
-                      neighbor-pos)))))
-  (cheats (undirected edges (ht-find input #\S)) diff size))
+    (for/list ([key (hash-keys input)]
+               #:when (not (equal? #\# (hash-ref input key)))
+               [dir (list up right down left)]
+               #:do ((define neighbor-pos (go dir key)))
+               #:when (and (hash-has-key? input neighbor-pos)
+                           (not (equal? #\# (hash-ref input neighbor-pos)))))
+      (list key neighbor-pos)))
+  (cheats (undirected edges (hash-find input #\S)) diff size))
 
 (module+ test
   (require rackunit)
