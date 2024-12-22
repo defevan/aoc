@@ -56,13 +56,15 @@
     [(equal? (go down from) to) #\v]
     [(equal? (go left from) to) #\<]))
 
-(define (combos lst #:accum (accum '(())))
-  (if (empty? lst)
-      accum
-      (combos (cdr lst)
-              #:accum (append-map (lambda (sub) (map (lambda (x) (cons x sub)) (car lst))) accum))))
+(define (combos lst)
+  (cond
+    [(empty? lst) '(())]
+    [else
+     (for*/list ([hd (car lst)]
+                 [tl (combos (cdr lst))])
+       (cons hd tl))]))
 
-(define (bfs ht start find)
+(define (all-paths ht start find)
   (define (loop queue result)
     (cond
       [(empty? queue) result]
@@ -82,7 +84,7 @@
 (define (possible-paths m l)
   (combos (reverse (for/list ([s (cons #\A l)]
                               [e l])
-                     (define paths (bfs m (hash-find m s) (hash-find m e)))
+                     (define paths (all-paths m (hash-find m s) (hash-find m e)))
                      (define min-length (length (argmin length paths)))
                      (for/list ([path paths]
                                 #:when (equal? min-length (length path)))
@@ -111,6 +113,4 @@
 
 (module+ main
   (define input (fmt "static/day21input.txt"))
-  (printf "day21\n\tpart1: ~a\n\tpart2: ~a\n"
-          (day21 2 (fmt "static/day21input.txt"))
-          (day21 25 (fmt "static/day21input.txt"))))
+  (printf "day21\n\tpart1: ~a\n\tpart2: ~a\n" (day21 2 input) (day21 25 input)))
