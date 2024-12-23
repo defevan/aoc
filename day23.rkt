@@ -1,17 +1,49 @@
 #lang racket
 
 (define (fmt fn)
-  (file->string fn))
+  (append*
+   (for/list ((line (file->lines fn)))
+     (match-define (list _ left right) (regexp-match #rx"([a-z]+)-([a-z]+)" line))
+     (list (cons left right) (cons right left)))))
 
-(define (part1 input)
-  input)
+(define (part1 undirected)
+  (define ts (filter (curryr string-prefix? "t") (remove-duplicates (map car undirected))))
+  (define groups '())
+  (for ((t ts))
+    (for ((p1 undirected) #:when (equal? (car p1) t))
+      (for ((p2 undirected) #:when (equal? (car p2) (cdr p1)))
+        (for ((p3 undirected) #:when (and (equal? (car p3) (cdr p2))
+                                          (equal? (cdr p3) t)))
+          (set! groups (cons (sort (map car (list p1 p2 p3)) string<?) groups))))))
+  (length (remove-duplicates groups)))
 
-(define (part2 input)
-  input)
+(define (part2 undirected)
+  (define ht
+    (for/fold ((ht (make-immutable-hash)))
+              ((node (map car undirected)))
+      (define connected (for/set ((pair undirected) #:when (equal? node (car pair))) (cdr pair)))
+      (hash-set ht node connected)))
+  (define maxset
+    (for/fold ((accum (set)))
+              ((node (hash-keys ht)))
+      (define connected (set-copy (hash-ref ht node)))
+      (for ((c1 connected))
+        (define subset (set-copy connected))
+        (set-remove! subset c1)
+        (for ((c2 subset) #:unless (set-member? (hash-ref ht c2) c1))
+          (set-remove! connected c2)))
+      (if (>= (set-count connected) (set-count accum))
+          (set-union (set node) connected)
+          accum)))
+  (string-join (sort (set->list maxset) string<?) ","))
 
 (module+ test
   (require rackunit)
-  (check-equal? '() '()))
+  (check-equal? (part1 (fmt "static/day23example.txt")) 7)
+  (check-equal? (part1 (fmt "static/day23input.txt")) 1062)
+  (check-equal? (part2 (fmt "static/day23example.txt")) "co,de,ka,ta")
+  (check-equal? (part2 (fmt "static/day23input.txt")) "bz,cs,fx,ms,oz,po,sy,uh,uv,vw,xu,zj,zm"))
 
 (module+ main
-  (displayln "TODO"))
+  (define input (fmt "static/day23input.txt"))
+  (printf "day23\n\tpart1: ~a\n\tpart2: ~a\n" (part1 input) (part2 input)))
