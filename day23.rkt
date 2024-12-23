@@ -37,16 +37,13 @@
       (hash-set ht node connected)))
   (define maxset ;; #<set: co de ka ta>
     (for/fold ([accum (set)])
-              ([node (hash-keys ht)]
-               #:do ((define connected (set-copy (hash-ref ht node)))))
-      (for ([c1 connected]
-            #:do ((define subset (set-remove (set-union (set) connected) c1))))
-        (for ([c2 subset]
-              #:unless (set-member? (hash-ref ht c2) c1))
-          (set-remove! connected c2)))
-      (if (>= (set-count connected) (set-count accum))
-          (set-union (set node) connected)
-          accum)))
+              ([node (hash-keys ht)])
+      (define connected (set-copy (hash-ref ht node)))
+      (for ([c1 connected])
+        (for ([c2 (set-remove (set-union (set) connected) c1)])
+          (unless (set-member? (hash-ref ht c2) c1)
+            (set-remove! connected c2))))
+      (argmax set-count (list accum (set-union (set node) connected)))))
   (~> (set->list maxset)
       (sort string<?)
       (string-join ",")))
