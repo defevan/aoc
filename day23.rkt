@@ -22,29 +22,37 @@
       (for ([p2 undirected]
             #:when (equal? (car p2) (cdr p1)))
         (for ([p3 undirected]
-              #:when (and (equal? (car p3) (cdr p2))
-                          (equal? (cdr p3) node)))
+              #:when (and (equal? (car p3) (cdr p2)) (equal? (cdr p3) node)))
           (set! groups (cons (sort (map car (list p1 p2 p3)) string<?) groups))))))
   (length (remove-duplicates groups)))
+
+(define (bron-kerbosch ht r p x)
+  (if (andmap empty? (list p x))
+      (list r)
+      (let loop ([p p]
+                 [accum '()])
+        (if (empty? p)
+            accum
+            (loop
+             (cdr p)
+             (append
+              accum
+              (bron-kerbosch
+               ht
+               (cons (car p) r)
+               (filter (lambda (u) (member u (hash-ref ht (car p) '()))) p)
+               (filter (lambda (u) (member u (hash-ref ht (car p) '()))) x))))))))
 
 (define (part2 undirected)
   (define ht ;; #hash((co . #<set: de ka ta>))
     (for/fold ([ht (make-immutable-hash)]) ([node (map car undirected)])
       (define connected
-        (for/set ([pair undirected]
-                  #:when (equal? node (car pair)))
+        (for/list ([pair undirected]
+                   #:when (equal? node (car pair)))
           (cdr pair)))
       (hash-set ht node connected)))
-  (define maxset ;; #<set: co de ka ta>
-    (for/fold ([accum (set)])
-              ([node (hash-keys ht)])
-      (define connected (set-copy (hash-ref ht node)))
-      (for ([c1 connected])
-        (for ([c2 (set-remove (set-union (set) connected) c1)])
-          (unless (set-member? (hash-ref ht c2) c1)
-            (set-remove! connected c2))))
-      (argmax set-count (list accum (set-union (set node) connected)))))
-  (~> (set->list maxset)
+  (~> (bron-kerbosch ht '() (hash-keys ht) '())
+      (argmax length _)
       (sort string<?)
       (string-join ",")))
 
