@@ -62,7 +62,6 @@
     (define C (find AND I A))
     (define Z (find XOR I A))
     (define O (find OR C B))
-
     (if (zero? i)
         (findswaps B (add1 i) swaplst)
         (cond ((> i 43) swaplst) ;; done
