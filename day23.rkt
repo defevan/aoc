@@ -45,12 +45,11 @@
 
 (define (part2 undirected)
   (define ht ;; #hash((co . #<set: de ka ta>))
-    (for/fold ([ht (make-immutable-hash)]) ([node (map car undirected)])
-      (define connected
-        (for/list ([pair undirected]
-                   #:when (equal? node (car pair)))
-          (cdr pair)))
-      (hash-set ht node connected)))
+    (for/hash ([node (map car undirected)])
+      (values node
+              (for/list ([pair undirected]
+                         #:when (equal? node (car pair)))
+                (cdr pair)))))
   (~> (bron-kerbosch ht '() (hash-keys ht) '())
       (argmax length _)
       (sort string<?)
