@@ -1,31 +1,32 @@
-(var rex (require "rex_pcre"))
-
-(var numstrings
-	{:zero "0" :one "1" :two "2" :three "3" :four "4" 
-         :five "5" :six "6" :seven "7" :eight "8" :nine "9"})
-
-(fn lines [filepath]
-	(with-open [f (io.open filepath)]
-		(icollect [line (f:lines)] line)))
+(fn flat [tbl]
+  (fn inner [tbl ret]
+    (each [key value (ipairs tbl)]
+      (match (type value)
+        :table (inner value ret)
+        _ (table.insert ret value)))
+    ret)
+  (inner tbl {}))
 
 (fn digits [str]
-	(icollect [num (rex.gmatch str "\\d")] num))
+  "Return 'digits' in a string, in string form. E.G. `1five6eigh2` -> `1`, `6`, `2`."
+  (flat
+    (fcollect [i 1 (length str)]
+      (icollect [j n (ipairs [:1 :2 :3 :4 :5 :6 :7 :8 :9])]
+        (if (= (string.find str n i) i) n)))))
 
 (fn numbers [str]
-	(icollect [n (rex.gmatch str "(?=(\\d|one|two|three|four|five|six|seven|eight|nine))")]
-		(or (. numstrings n) n)))
+  "Return 'numbers' in a string, in string form. E.G. `five6eightwo` -> `5`, `6`, `8`, `2`."
+  (var strnumbers {:one :1 :two :2 :three :3 :four :4 :five :5 :six :6 :seven :7 :eight :8 :nine :9})
+  (flat
+    (fcollect [i 1 (length str)]
+      (icollect [j n (ipairs [:1 :2 :3 :4 :5 :6 :7 :8 :9 :one :two :three :four :five :six :seven :eight :nine])]
+        (if (= (string.find str n i) i)
+          (or (. strnumbers n) n))))))
 
-(fn day01 [lines numbers_func]
-	(accumulate [ret 0 index line (pairs lines)]
-		(do (var nums (numbers_func line))
-		    (+ ret (tonumber (.. (. nums 1) (. nums (length nums))))))))
-
-(var example01 (lines "static/day01example01.txt"))
-(var example02 (lines "static/day01example02.txt"))
-(var input (lines "static/day01input01.txt"))
-
-(print "day01 part01 example" (day01 example01 digits))
-(print "day01 part01 input" (day01 input digits))
-
-(print "day01 part02 example" (day01 example02 numbers))
-(print "day01 part02 input" (day01 input numbers))
+(print
+  (with-open [f (io.open "static/day01input01.txt")]
+    (accumulate [(x y) (values 0 0) line (f:lines)]
+      (let [dx (digits line)
+            dy (numbers line)]
+        (values (+ x (tonumber (.. (. dx 1) (. dx (length dx)))))
+                (+ y (tonumber (.. (. dy 1) (. dy (length dy))))))))))
